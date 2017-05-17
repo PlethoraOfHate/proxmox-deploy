@@ -1,0 +1,62 @@
+#cloud-config
+hostname: {{ context.name }}
+
+locale: {{ context.locale }}
+timezone: {{ context.timezone }}
+write_files:
+  - path: /etc/default/keyboard
+    content: |
+      XKBMODEL="pc105"
+      XKBLAYOUT="{{ context.kb_layout }}"
+      XKBVARIANT="intl"
+      XKBOPTIONS=""
+    permissions: '0644'
+    owner: root:root
+
+ssh_pwauth: {{ context.ssh_pass_auth }}
+ssh_authorized_keys:
+  {% for ssh_key in context.ssh_root_keys -%}
+  - {{ ssh_key }}
+  {% endfor %}
+
+package_update: {{ context.apt_update }}
+package_upgrade: {{ context.apt_upgrade }}
+
+resize_rootfs: {{ context.resize_rootfs }}
+{% if context.packages %}
+packages:
+  {% for package in context.packages -%}
+  - {{ package }}
+  {% endfor -%}
+{% endif %}
+{% if context.runcmds -%}
+runcmd:
+  {% for runcmd in context.runcmds -%}
+  - {{ runcmd }}
+  {% endfor -%}
+{% endif -%}
+
+{% if context.configure_chef %}
+chef:
+  install_type: "omnibus"
+  omnibus_url: "{{ context.chef_omnibus_url }}"
+  force_install: false
+  server_url: "{{ context.chef_server_url }}"
+  node_name: "{{ context.name }}"
+  environment: "{{ context.chef_environment }}"
+  validation_name: "{{ context.chef_validator }}"
+  validation_key: |
+    {% for line in context.chef_validator_file -%}
+    {{ line }}
+    {% endfor %}
+  run_list:
+  {% for line in context.chef_run_list -%}
+    - "{{ line }}"
+  {% endfor -%}
+{% endif -%}
+
+{% if context.reboot %}
+power_state:
+  mode: reboot
+  message: Instance ready, rebooting...
+{% endif %}
